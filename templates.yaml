@@ -1,0 +1,17 @@
+welcome_msg: Welcome to MyScope!
+
+welcome_reprompt_msg: Please issue a command, or say help for a list of commands
+
+known_command_msg: |
+    I now know that your command is {{ command }}. You can ask me your command
+    by saying, what's my command?
+
+known_command_reprompt_msg: You can ask me your command by saying, what's my command?
+
+known_command_bye_msg: Your current command is {{ command }}. Goodbye
+
+unknown_command_msg: I'm not sure what that command was. Please say help for a list of commands
+
+unknown_command_reprompt_msg: I'm not sure what that command was.
+
+card_title_msg: MyScope

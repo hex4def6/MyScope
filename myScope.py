@@ -1,61 +1,95 @@
-from flask import Flask
-from flask_ask import Ask, statement, question, session
-import json
-import requests
-import time
-import unidecode
+print('Start of day')
+import logging
+
+from flask import Flask, json, render_template
+from flask_ask import Ask, request, session, question, statement
+
+
+from lantz.drivers.examples import LantzSignalGenerator
+from lantz import Q_
+
+with LantzSignalGenerator('TCPIP::localhost::5678::SOCKET') as inst:
+    inst.amplitude = Q_(1, 'volt')
+    print('amplitude: {}'.format(inst.amplitude))
+
+with LantzSignalGenerator('TCPIP::localhost::5678::SOCKET') as inst:
+    inst.amplitude = Q_(1, 'volt')
+    print('amplitude: {}'.format(inst.amplitude))
+
+with LantzSignalGenerator('TCPIP::localhost::5678::SOCKET') as inst:
+    inst.amplitude = Q_(1, 'volt')
+    print('amplitude: {}'.format(inst.amplitude))
+
+
+#inst = LantzSignalGenerator('TCPIP::localhost::5678::SOCKET')
+#inst.initialize()
+
+print('Loaded imports....')
+#print('Device found... ' + inst.idn)
+
+
 
 app = Flask(__name__)
-ask = Ask(app, "/MyScope")
+ask = Ask(app, "/myScope")
+logging.getLogger('flask_ask').setLevel(logging.DEBUG)
 
-def get_headlines():
-    user_pass_dict = {'user': '',
-                      'passwd': '',
-                      'api_type': 'json'}
-    sess = requests.Session()
-    sess.headers.update({'User-Agent': 'I am testing Alexa: Sentdex'})
-    sess.post('https://www.reddit.com/api/login', data = user_pass_dict)
-    time.sleep(1)
-    url = 'https://reddit.com/r/worldnews/.json?limit=10'
-    html = sess.get(url)
-    data = json.loads(html.content.decode('utf-8'))
-    titles = [unidecode.unidecode(listing['data']['title']) for listing in data['data']['children']]
-    titles = '... '.join([i for i in titles])
-    return titles  
 
-@app.route('/')
-def homepage():
-    return "MyScope is running!"
+COMMAND_KEY = "COMMAND"
+
+
 
 @ask.launch
-def start_skill():
-    welcome_message = 'Starting MyScope!'
-    return question(welcome_message)
-
-@ask.intent("NewsIntent")
-def share_headlines():
-    headlines = get_headlines()
-    headline_msg = 'The current world news headlines are {}'.format(headlines)
-    return statement(headline_msg)
-
-@ask.intent("ExitIntent")
-def ExitIntent():
-    bye_text = 'Goodbye'
-    return statement(bye_text)
+def launch():
+    card_title = render_template('card_title_msg')
+    question_text = render_template('welcome_msg') 
+    reprompt_text = render_template('welcome_reprompt_msg')
+    return question(question_text).reprompt(reprompt_text).standard_card(title=card_title, text=question_text)
 
 
-@ask.intent("VersionIntent")
-def VersionIntent():
-    output_text = 'MyScope version is 0.01'
+@ask.intent('MyCommandIsIntent', mapping={'command': 'Command'})
+def my_command_is(command):
+    card_title = render_template('card_title_msg')
+    if command is not None:
+        session.attributes[COMMAND_KEY] = command
+        question_text = render_template('known_command_msg', command=command)
+        reprompt_text = render_template('known_command_reprompt_msg')
+    else:
+        question_text = render_template('unknown_command_msg')
+        reprompt_text = render_template('unknown_command_reprompt_msg')
+    return question(question_text).reprompt(reprompt_text).simple_card(card_title, question_text)
+
+
+
+@ask.intent('WhatsMyCommandIntent')
+def whats_my_command():
+    card_title = render_template('card_title_msg')
+    command = session.attributes.get(COMMAND_KEY)
+    if command is not None:
+        if command is not 'identification':
+            statement_text = render_template('known_command_bye_msg', command='error error not found')
+        else:    
+            statement_text = render_template('known_command_bye_msg', command=command)
+        return statement(statement_text).simple_card(card_title, statement_text)
+    else:
+        question_text = render_template('unknown_command_reprompt_msg')
+        return question(question_text).reprompt(question_text).simple_card(card_title, question_text)
+
+
+
+@ask.intent("IDNIntent")
+def IDNIntent():
+    output_text = inst.idn
+    print(inst.idn)
     return statement(output_text)
 
 
+@ask.session_ended
+def session_ended():
+    inst.finalize()
+    print('Session Ended!')
+    return statement("")
 
 
-
-
-
-
-    
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,use_reloader=False)
+    print('Got here')
